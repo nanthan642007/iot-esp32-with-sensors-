@@ -1,0 +1,110 @@
+#include <LiquidCrystal.h>
+#include "DHT.h"
+
+#define DHTPIN 23
+#define DHTTYPE DHT22
+
+#define ECHO_PIN 16
+#define TRIG_PIN 17
+
+#define PIR_PIN 22
+#define LED_PIN 5
+
+int state = LOW;
+int val = 0;
+
+LiquidCrystal lcd(15, 2, 18, 19, 21, 4);
+DHT dht(DHTPIN, DHTTYPE);
+
+void setup() {
+  Serial.begin(9600);
+
+  Serial.println("DHT22 Test");
+  dht.begin();
+
+  pinMode(LED_PIN, OUTPUT);
+
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  pinMode(PIR_PIN, INPUT);
+
+  lcd.begin(16, 2);
+  lcd.setCursor(0, 0);
+  lcd.print("Distance:");
+}
+
+float readDistanceCM() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(ECHO_PIN, HIGH);
+
+  return duration * 0.0343 / 2.0;
+}
+
+void loop() {
+  // DHT22 Reading
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  float f = dht.readTemperature(true);
+
+  if (isnan(t) || isnan(h)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  Serial.print("Humidity: ");
+  Serial.print(h);
+  Serial.print("%  Temperature: ");
+  Serial.print(t);
+  Serial.print(" °C  ");
+  Serial.print(f);
+  Serial.println(" °F");
+
+  // Ultrasonic Distance
+  float distance = readDistanceCM();
+
+  Serial.print("Measured distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  
+  digitalWrite(LED_PIN, distance < 100);
+
+  lcd.setCursor(9, 0);
+  lcd.print("      ");      
+  lcd.setCursor(9, 0);
+  lcd.print(distance, 1);
+  lcd.print("cm");
+
+  
+  lcd.setCursor(0, 1);
+  lcd.print("T:");
+  lcd.print(t, 1);
+  lcd.print((char)223); 
+  lcd.print("C ");
+
+  
+  val = digitalRead(PIR_PIN);
+
+  if (val == HIGH) {
+    if (state == LOW) {
+      Serial.println("Motion detected!");
+      state = HIGH;
+    }
+  }
+  else {
+    if (state == HIGH) {
+      Serial.println("Motion stopped!");
+      state = LOW;
+    }
+  }
+
+  delay(2000);
+}
